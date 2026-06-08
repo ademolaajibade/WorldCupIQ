@@ -1,0 +1,104 @@
+const redis = require('../config/redis');
+const User = require('../models/User');
+
+const GLOBAL_KEY = 'leaderboard:global';
+const countryKey = (code) => `leaderboard:country:${code.toUpperCase()}`;
+
+const addOrUpdateScore = async (userId, totalScore, country) => {
+  const id = userId.toString();
+  await redis.zadd(GLOBAL_KEY, { score: totalScore, member: id });
+  if (country) {
+    await redis.zadd(countryKey(country), { score: totalScore, member: id });
+  }
+};
+
+const getUserRank = async (userId) => {
+  const rank = await redis.zrevrank(GLOBAL_KEY, userId.toString());
+  return rank !== null ? rank + 1 : null; // 1-indexed
+};
+
+// Returns enriched leaderboard entries for a page
+const getGlobalLeaderboard = async (offset = 0, limit = 50) => {
+  return _fetchAndEnrich(GLOBAL_KEY, offset, limit);
+};
+
+const getCountryLeaderboard = async (countryCode, offset = 0, limit = 50) => {
+  return _fetchAndEnrich(countryKey(countryCode), offset, limit);
+};
+
+// Builds a transient friends board from individual scores
+const getFriendsLeaderboard = async (friendIds) => {
+  if (!friendIds || friendIds.length === 0) return [];
+  const ids = friendIds.map((id) => id.toString());
+
+  // Fetch each user's score from global ZSET
+  const pipeline = ids.map((id) => redis.zscore(GLOBAL_KEY, id));
+  const scores = await Promise.all(pipeline);
+
+  const entries = ids
+    .map((id, i) => ({ userId: id, score: parseFloat(scores[i] || 0) }))
+    .sort((a, b) => b.score - a.score)
+    .map((e, i) => ({ ...e, rank: i + 1 }));
+
+  return _enrichEntries(entries);
+};
+
+const syncLeaderboardScore = async (userId, country) => {
+  const user = await User.findById(userId).select('stats.totalScore country');
+  if (!user) return;
+  await addOrUpdateScore(userId, user.stats.totalScore, country || user.country);
+};
+
+// Helpers
+
+async function _fetchAndEnrich(key, offset, limit) {
+  const raw = await redis.zrange(key, offset, offset + limit - 1, {
+    rev: true,
+    withScores: true,
+  });
+
+  if (!raw || raw.length === 0) return [];
+
+  // @upstash/redis returns [{member, score}, ...] when withScores: true
+  const entries = raw.map((item, i) => ({
+    userId: item.member,
+    score: item.score,
+    rank: offset + i + 1,
+  }));
+
+  return _enrichEntries(entries);
+}
+
+async function _enrichEntries(entries) {
+  const ids = entries.map((e) => e.userId);
+  const users = await User.find({ _id: { $in: ids } }).select(
+    'displayName username avatarUrl country'
+  );
+
+  const userMap = {};
+  users.forEach((u) => {
+    userMap[u._id.toString()] = u;
+  });
+
+  return entries.map((e) => {
+    const u = userMap[e.userId] || {};
+    return {
+      rank: e.rank,
+      userId: e.userId,
+      displayName: u.displayName || 'Unknown',
+      username: u.username || null,
+      avatarUrl: u.avatarUrl || null,
+      country: u.country || null,
+      score: e.score,
+    };
+  });
+}
+
+module.exports = {
+  addOrUpdateScore,
+  getUserRank,
+  getGlobalLeaderboard,
+  getCountryLeaderboard,
+  getFriendsLeaderboard,
+  syncLeaderboardScore,
+};
