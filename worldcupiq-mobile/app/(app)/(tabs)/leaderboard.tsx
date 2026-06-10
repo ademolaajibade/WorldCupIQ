@@ -60,7 +60,7 @@ export default function LeaderboardScreen() {
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['leaderboard', scope],
-    queryFn: () => leaderboardApi.get(scope),
+    queryFn: () => leaderboardApi.get(scope, 1, user?.country),
   });
 
   const entries = data?.entries ?? [];

@@ -36,7 +36,7 @@ const getFriendsLeaderboard = async (friendIds) => {
   const scores = await Promise.all(pipeline);
 
   const entries = ids
-    .map((id, i) => ({ userId: id, score: parseFloat(scores[i] || 0) }))
+    .map((id, i) => ({ userId: id, score: parseFloat(scores[i] ?? 0) }))
     .sort((a, b) => b.score - a.score)
     .map((e, i) => ({ ...e, rank: i + 1 }));
 
@@ -72,7 +72,7 @@ async function _fetchAndEnrich(key, offset, limit) {
 async function _enrichEntries(entries) {
   const ids = entries.map((e) => e.userId);
   const users = await User.find({ _id: { $in: ids } }).select(
-    'displayName username avatarUrl country'
+    'displayName username avatarUrl country stats.totalScore stats.correctAnswers stats.questionsAnswered'
   );
 
   const userMap = {};
@@ -82,6 +82,9 @@ async function _enrichEntries(entries) {
 
   return entries.map((e) => {
     const u = userMap[e.userId] || {};
+    const answered = u.stats?.questionsAnswered || 0;
+    const correct = u.stats?.correctAnswers || 0;
+    const accuracy = answered > 0 ? Math.round((correct / answered) * 100) : 0;
     return {
       rank: e.rank,
       userId: e.userId,
@@ -89,7 +92,8 @@ async function _enrichEntries(entries) {
       username: u.username || null,
       avatarUrl: u.avatarUrl || null,
       country: u.country || null,
-      score: e.score,
+      totalScore: u.stats?.totalScore ?? e.score ?? 0,
+      accuracy,
     };
   });
 }

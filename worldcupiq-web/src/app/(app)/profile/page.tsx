@@ -199,26 +199,35 @@ export default function ProfilePage() {
         </Card>
 
         {/* Achievements */}
-        {achievementsData?.achievements?.length > 0 && (
+        {achievementsData?.achievements?.some((a: { unlocked: boolean }) => a.unlocked) && (
           <Card className="border-border bg-card">
             <CardHeader>
               <CardTitle className="text-base">
-                Achievements ({achievementsData.achievements.length})
+                Achievements ({achievementsData.achievements.filter((a: { unlocked: boolean }) => a.unlocked).length})
               </CardTitle>
             </CardHeader>
             <CardContent>
               <Separator className="mb-4" />
               <div className="grid gap-3 sm:grid-cols-2">
-                {achievementsData.achievements.map(
-                  (a: { achievementId: { _id: string; icon: string; name: string; description: string }; unlockedAt: string }) => (
+                {achievementsData.achievements
+                  .filter((a: { unlocked: boolean }) => a.unlocked)
+                  .map(
+                  (a: { _id: string; iconUrl: string | null; title: string; description: string; category: string; unlockedAt: string }) => (
                     <div
-                      key={a.achievementId._id}
+                      key={a._id}
                       className="flex items-center gap-3 rounded-lg border border-border p-3"
                     >
-                      <span className="text-2xl">{a.achievementId.icon}</span>
+                      {a.iconUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={a.iconUrl} alt="" className="h-8 w-8 object-contain" />
+                      ) : (
+                        <span className="text-2xl">
+                          {{ streak: '🔥', accuracy: '🎯', social: '🤝', collection: '📦', special: '⭐' }[a.category] ?? '🏆'}
+                        </span>
+                      )}
                       <div>
-                        <p className="text-sm font-medium">{a.achievementId.name}</p>
-                        <p className="text-xs text-muted-foreground">{a.achievementId.description}</p>
+                        <p className="text-sm font-medium">{a.title}</p>
+                        <p className="text-xs text-muted-foreground">{a.description}</p>
                         <p className="text-xs text-muted-foreground/70 mt-0.5">
                           {format(new Date(a.unlockedAt), 'MMM d, yyyy')}
                         </p>

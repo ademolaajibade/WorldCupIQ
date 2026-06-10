@@ -151,14 +151,16 @@ export default function ProfileScreen() {
               />
             </View>
             <View style={styles.fieldWrap}>
-              <Text style={styles.fieldLabel}>Country</Text>
+              <Text style={styles.fieldLabel}>Country (2-letter code)</Text>
               <TextInput
                 style={styles.fieldInput}
                 value={country}
-                onChangeText={setCountry}
-                placeholder="e.g. Nigeria"
+                onChangeText={(v) => setCountry(v.toUpperCase())}
+                placeholder="e.g. NG, US, BR"
                 placeholderTextColor={COLORS.textFaint}
                 selectionColor={COLORS.primary}
+                autoCapitalize="characters"
+                maxLength={2}
               />
             </View>
             <TouchableOpacity

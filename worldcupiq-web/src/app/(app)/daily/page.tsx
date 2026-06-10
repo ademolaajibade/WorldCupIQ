@@ -25,7 +25,7 @@ export default function DailyChallengePage() {
   const startMutation = useMutation({
     mutationFn: () => api.post('/trivia/daily/start'),
     onSuccess: (res) => setActiveSession(res.data.session ?? res.data),
-    onError: () => {},
+    onError: () => { /* error shown via startMutation.error below */ },
   });
 
   const today = format(new Date(), 'EEEE, MMMM d');

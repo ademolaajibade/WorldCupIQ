@@ -62,8 +62,8 @@ function LeaderboardRow({ entry, isMe }: { entry: LeaderboardEntry; isMe: boolea
         <span className="text-sm text-muted-foreground">{entry.country}</span>
       )}
       <div className="text-right">
-        <p className="text-sm font-bold">{entry.totalScore.toLocaleString()}</p>
-        <p className="text-xs text-muted-foreground">{entry.accuracy}% acc.</p>
+        <p className="text-sm font-bold">{(entry.totalScore ?? 0).toLocaleString()}</p>
+        <p className="text-xs text-muted-foreground">{entry.accuracy ?? 0}% acc.</p>
       </div>
     </div>
   );
@@ -158,12 +158,12 @@ export default function LeaderboardPage() {
             <Globe className="h-4 w-4" />
             Global
           </TabsTrigger>
-          <TabsTrigger value="country" className="flex-1 gap-1.5" disabled={!isPremium}>
+          <TabsTrigger value="country" className="flex-1 gap-1.5">
             <Medal className="h-4 w-4" />
             Country
             {!isPremium && <Lock className="h-3 w-3 ml-1 opacity-50" />}
           </TabsTrigger>
-          <TabsTrigger value="friends" className="flex-1 gap-1.5" disabled={!isPremium}>
+          <TabsTrigger value="friends" className="flex-1 gap-1.5">
             <Users className="h-4 w-4" />
             Friends
             {!isPremium && <Lock className="h-3 w-3 ml-1 opacity-50" />}

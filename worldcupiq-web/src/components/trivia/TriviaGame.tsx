@@ -26,6 +26,10 @@ const QUESTION_TIME = 20;
 export default function TriviaGame({ session, mode = 'quick', onComplete }: Props) {
   const router = useRouter();
   const { user } = useAuthStore();
+
+  // Backend returns sessionId; _id is the fallback for older shape
+  const sessionId = session.sessionId ?? session._id ?? '';
+
   const [currentIndex, setCurrentIndex] = useState(session.currentIndex ?? 0);
   const [selected, setSelected] = useState<number | null>(null);
   const [answerState, setAnswerState] = useState<AnswerState>('idle');
@@ -36,6 +40,8 @@ export default function TriviaGame({ session, mode = 'quick', onComplete }: Prop
   const [submitting, setSubmitting] = useState(false);
   const [results, setResults] = useState<boolean[]>([]);
   const [explanation, setExplanation] = useState<string | null>(null);
+  const [correctAnswerText, setCorrectAnswerText] = useState<string | null>(null);
+  const [pointsEarned, setPointsEarned] = useState<number>(0);
   const [sharing, setSharing] = useState(false);
 
   const questions: Question[] = session.questions;
@@ -51,15 +57,15 @@ export default function TriviaGame({ session, mode = 'quick', onComplete }: Prop
     setSubmitting(true);
     try {
       const res = await api.post('/trivia/answer', {
-        sessionId: session._id,
+        sessionId,
         questionId: currentQuestion._id,
-        answerIndex: -1,
-        timeSpent: QUESTION_TIME,
+        answer: '__timeout__',
       });
       setExplanation(res.data.explanation ?? null);
+      setCorrectAnswerText(res.data.correctAnswer ?? null);
     } catch {}
     setSubmitting(false);
-  }, [selected, submitting, session._id, currentQuestion?._id]);
+  }, [selected, submitting, sessionId, currentQuestion?._id]);
 
   useEffect(() => {
     if (answerState !== 'idle' || completed) return;
@@ -77,23 +83,24 @@ export default function TriviaGame({ session, mode = 'quick', onComplete }: Prop
     if (answerState !== 'idle' || submitting) return;
     setSelected(optionIndex);
     setSubmitting(true);
-    const timeSpent = QUESTION_TIME - timeLeft;
     try {
       const res = await api.post('/trivia/answer', {
-        sessionId: session._id,
+        sessionId,
         questionId: currentQuestion._id,
-        answerIndex: optionIndex,
-        timeSpent,
+        answer: currentQuestion.options[optionIndex],
       });
-      const correct = res.data.correct ?? optionIndex === currentQuestion.correctIndex;
+      const correct = res.data.correct as boolean;
       setAnswerState(correct ? 'correct' : 'wrong');
       setResults((prev) => [...prev, correct]);
       setExplanation(res.data.explanation ?? null);
-      if (correct) setScore((s) => s + (res.data.pointsEarned ?? 10));
+      setCorrectAnswerText(res.data.correctAnswer ?? null);
+      const pts = res.data.pointsEarned ?? 0;
+      setPointsEarned(pts);
+      if (correct) setScore((s) => s + pts);
     } catch {
-      const correct = optionIndex === currentQuestion.correctIndex;
-      setAnswerState(correct ? 'correct' : 'wrong');
-      setResults((prev) => [...prev, correct]);
+      // Optimistic fallback — server is authoritative; mark wrong on failure
+      setAnswerState('wrong');
+      setResults((prev) => [...prev, false]);
     }
     setSubmitting(false);
   }
@@ -101,8 +108,8 @@ export default function TriviaGame({ session, mode = 'quick', onComplete }: Prop
   async function handleNext() {
     if (currentIndex + 1 >= total) {
       try {
-        const res = await api.post(`/trivia/session/${session._id}/complete`);
-        setFinalScore(res.data.score ?? score);
+        const res = await api.post(`/trivia/session/${sessionId}/complete`);
+        setFinalScore(res.data.totalScore ?? res.data.score ?? score);
       } catch {
         setFinalScore(score);
       }
@@ -114,6 +121,8 @@ export default function TriviaGame({ session, mode = 'quick', onComplete }: Prop
     setSelected(null);
     setAnswerState('idle');
     setExplanation(null);
+    setCorrectAnswerText(null);
+    setPointsEarned(0);
   }
 
   async function handleShare() {
@@ -151,15 +160,11 @@ export default function TriviaGame({ session, mode = 'quick', onComplete }: Prop
           </div>
         </div>
 
-        {/* Emoji grid preview */}
         <div className="flex gap-1.5">
           {results.map((r, i) => (
             <div
               key={i}
-              className={cn(
-                'h-7 w-7 rounded',
-                r ? 'bg-primary' : 'bg-destructive'
-              )}
+              className={cn('h-7 w-7 rounded', r ? 'bg-primary' : 'bg-destructive')}
             />
           ))}
         </div>
@@ -229,7 +234,9 @@ export default function TriviaGame({ session, mode = 'quick', onComplete }: Prop
       <div className="grid gap-3 sm:grid-cols-2">
         {currentQuestion.options.map((option, idx) => {
           const isSelected = selected === idx;
-          const isCorrect = idx === currentQuestion.correctIndex;
+          // Use the text returned by the server — never trust a client-side correctIndex
+          const isCorrectAnswer = answerState !== 'idle' && !!correctAnswerText && option === correctAnswerText;
+          const isWrongSelection = answerState !== 'idle' && isSelected && !isCorrectAnswer;
           const showResult = answerState !== 'idle';
           return (
             <button
@@ -239,17 +246,17 @@ export default function TriviaGame({ session, mode = 'quick', onComplete }: Prop
               className={cn(
                 'flex items-center gap-3 rounded-xl border p-4 text-left text-sm font-medium transition-all',
                 !showResult && 'border-border bg-card hover:border-primary hover:bg-primary/5',
-                showResult && isCorrect && 'border-primary bg-primary/15 text-primary',
-                showResult && isSelected && !isCorrect && 'border-destructive bg-destructive/15 text-destructive',
-                showResult && !isSelected && !isCorrect && 'border-border bg-card opacity-50'
+                showResult && isCorrectAnswer && 'border-primary bg-primary/15 text-primary',
+                showResult && isWrongSelection && 'border-destructive bg-destructive/15 text-destructive',
+                showResult && !isSelected && !isCorrectAnswer && 'border-border bg-card opacity-50'
               )}
             >
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-current text-xs font-bold">
                 {String.fromCharCode(65 + idx)}
               </span>
               <span className="flex-1">{option}</span>
-              {showResult && isCorrect && <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />}
-              {showResult && isSelected && !isCorrect && <XCircle className="h-4 w-4 shrink-0 text-destructive" />}
+              {showResult && isCorrectAnswer && <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />}
+              {showResult && isWrongSelection && <XCircle className="h-4 w-4 shrink-0 text-destructive" />}
             </button>
           );
         })}
@@ -272,14 +279,19 @@ export default function TriviaGame({ session, mode = 'quick', onComplete }: Prop
             )}
             <div className="flex-1 min-w-0">
               <p className={cn('font-semibold text-sm', answerState === 'correct' ? 'text-primary' : 'text-destructive')}>
-                {answerState === 'correct' ? 'Correct!' : 'Wrong!'}
+                {answerState === 'correct' ? `Correct! +${pointsEarned} pts` : 'Wrong!'}
               </p>
+              {answerState === 'wrong' && correctAnswerText && (
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  Answer: <span className="font-medium text-foreground">{correctAnswerText}</span>
+                </p>
+              )}
               {explanation && (
-                <p className="mt-1 text-sm text-muted-foreground leading-relaxed">{explanation}</p>
+                <p className="mt-1 text-sm text-muted-foreground leading-relaxed italic">{explanation}</p>
               )}
             </div>
           </div>
-          <Button onClick={handleNext} size="sm" className="self-end">
+          <Button onClick={handleNext} size="sm" className="self-end" disabled={submitting}>
             {currentIndex + 1 >= total ? 'Finish' : 'Next question'}
             <ChevronRight className="ml-1 h-3.5 w-3.5" />
           </Button>

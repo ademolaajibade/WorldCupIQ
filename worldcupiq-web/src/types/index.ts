@@ -7,6 +7,11 @@ export interface User {
   role: 'user' | 'admin';
   country?: string;
   favoriteTeam?: string;
+  settings?: {
+    notifications: { daily: boolean; achievements: boolean };
+    language: string;
+    theme: 'light' | 'dark' | 'auto';
+  };
   stats: {
     totalScore: number;
     gamesPlayed: number;
@@ -49,7 +54,8 @@ export interface Pack {
 }
 
 export interface Session {
-  _id: string;
+  _id?: string;
+  sessionId?: string;
   packId?: string;
   type: 'daily' | 'quick' | 'pack';
   questions: Question[];

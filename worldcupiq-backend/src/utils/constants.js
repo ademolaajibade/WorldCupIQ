@@ -37,16 +37,14 @@ const ACHIEVEMENT_SLUGS = {
 const PAYSTACK_PRICES = {
   PREMIUM_MONTHLY: 350000,    // ₦3,500
   TOURNAMENT_PASS: 650000,    // ₦6,500
-  WIDGET_STARTER: 2900000,   // ₦29,000
-  WIDGET_PRO: 9900000,       // ₦99,000
+// ₦99,000
 };
 
 // Flutterwave pricing (USD cents — $1 = 100 cents)
 const FLUTTERWAVE_PRICES = {
   PREMIUM_MONTHLY: 299,       // $2.99
   TOURNAMENT_PASS: 799,       // $7.99
-  WIDGET_STARTER: 2900,       // $29.00
-  WIDGET_PRO: 9900,           // $99.00
+      // $99.00
 };
 
 const ANTI_CHEAT_MIN_MS = 500;

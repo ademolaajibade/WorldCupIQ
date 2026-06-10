@@ -29,7 +29,7 @@ const selectQuestionsForDay = async () => {
       isActive: true,
       difficulty,
       _id: { $nin: [...recentIds] },
-    }).select('_id');
+    }).select('_id'); 
 
     const picks = sampleArray(pool, count);
     if (picks.length < count) {
@@ -72,20 +72,20 @@ const fetchMatchOfTheDay = async (dateStr) => {
   }
 };
 
-const generateDailyChallenge = async () => {
-  const tomorrow = tomorrowUTC();
+const generateDailyChallenge = async (targetDate) => {
+  const date = targetDate || tomorrowUTC();
 
-  const existing = await DailyChallenge.findOne({ date: tomorrow });
+  const existing = await DailyChallenge.findOne({ date });
   if (existing) {
-    console.log(`Daily challenge for ${tomorrow} already exists`);
-    return;
+    console.log(`Daily challenge for ${date} already exists`);
+    return existing;
   }
 
   const questionIds = await selectQuestionsForDay();
-  const matchOfTheDay = await fetchMatchOfTheDay(tomorrow);
+  const matchOfTheDay = await fetchMatchOfTheDay(date);
 
   const challenge = await DailyChallenge.create({
-    date: tomorrow,
+    date,
     questions: questionIds,
     matchOfTheDay,
   });
@@ -96,18 +96,34 @@ const generateDailyChallenge = async () => {
     select: '-correctAnswer',
   });
   await redis.set(
-    `daily:questions:${tomorrow}`,
+    `daily:questions:${date}`,
     JSON.stringify(populated.toObject()),
     { ex: 25 * 3600 }
   );
 
-  console.log(`Daily challenge created for ${tomorrow} with ${questionIds.length} questions`);
+  console.log(`Daily challenge created for ${date} with ${questionIds.length} questions`);
+  return challenge;
+};
+
+// Called on server startup — creates today's challenge if missing
+const ensureTodayChallenge = async () => {
+  try {
+    const { todayUTC } = require('../utils/helpers');
+    const today = todayUTC();
+    const existing = await DailyChallenge.findOne({ date: today });
+    if (!existing) {
+      console.log(`No challenge for today (${today}) — generating now...`);
+      await generateDailyChallenge(today);
+    }
+  } catch (err) {
+    console.error('ensureTodayChallenge failed:', err.message);
+  }
 };
 
 const initDailyChallengeJob = () => {
-  // Runs at 23:00 UTC every day
-  cron.schedule('0 23 * * *', generateDailyChallenge, { timezone: 'UTC' });
+  // Runs at 23:00 UTC every day to create tomorrow's challenge
+  cron.schedule('0 23 * * *', () => generateDailyChallenge(), { timezone: 'UTC' });
   console.log('Daily challenge cron job scheduled (23:00 UTC)');
 };
 
-module.exports = { initDailyChallengeJob, generateDailyChallenge };
+module.exports = { initDailyChallengeJob, generateDailyChallenge, ensureTodayChallenge };

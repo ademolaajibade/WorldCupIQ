@@ -70,7 +70,11 @@ apiClient.interceptors.response.use(
 
 export function extractError(err: unknown): string {
   if (axios.isAxiosError(err)) {
-    return (err.response?.data as { message?: string })?.message ?? err.message;
+    const data = err.response?.data;
+    if (Array.isArray(data)) {
+      return data.map((e: { message?: string }) => e.message).filter(Boolean).join('\n');
+    }
+    return (data as { message?: string })?.message ?? err.message;
   }
   if (err instanceof Error) return err.message;
   return 'Something went wrong';

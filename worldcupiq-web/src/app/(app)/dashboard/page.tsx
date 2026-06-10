@@ -261,19 +261,24 @@ export default function DashboardPage() {
       </div>
 
       {/* Recent achievements */}
-      {achievementsData?.achievements?.length > 0 && (
+      {achievementsData?.achievements?.some((a: { unlocked: boolean }) => a.unlocked) && (
         <div className="mt-6">
           <h2 className="mb-4 text-base font-semibold">Recent achievements</h2>
           <div className="flex flex-wrap gap-3">
-            {achievementsData.achievements.slice(0, 6).map((a: { achievementId: { _id: string; icon: string; name: string; description: string } }) => (
+            {achievementsData.achievements
+              .filter((a: { unlocked: boolean }) => a.unlocked)
+              .slice(0, 6)
+              .map((a: { _id: string; iconUrl: string | null; title: string; description: string; category: string }) => (
               <div
-                key={a.achievementId._id}
+                key={a._id}
                 className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2"
               >
-                <span className="text-xl">{a.achievementId.icon}</span>
+                <span className="text-xl">
+                  {{ streak: '🔥', accuracy: '🎯', social: '🤝', collection: '📦', special: '⭐' }[a.category] ?? '🏆'}
+                </span>
                 <div>
-                  <p className="text-xs font-medium">{a.achievementId.name}</p>
-                  <p className="text-xs text-muted-foreground">{a.achievementId.description}</p>
+                  <p className="text-xs font-medium">{a.title}</p>
+                  <p className="text-xs text-muted-foreground">{a.description}</p>
                 </div>
               </div>
             ))}

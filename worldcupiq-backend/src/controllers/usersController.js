@@ -22,6 +22,7 @@ const updateProfile = async (req, res, next) => {
     const updates = {};
 
     if (data.displayName !== undefined) updates.displayName = data.displayName;
+    if (data.country !== undefined) updates.country = data.country;
     if (data.favoriteTeam !== undefined) updates.favoriteTeam = data.favoriteTeam;
     if (data.settings) {
       if (data.settings.notifications?.daily !== undefined)

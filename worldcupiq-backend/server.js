@@ -1,7 +1,7 @@
 require('dotenv').config();
 const app = require('./app');
 const connectDB = require('./src/config/db');
-const { initDailyChallengeJob } = require('./src/jobs/dailyChallenge');
+const { initDailyChallengeJob, ensureTodayChallenge } = require('./src/jobs/dailyChallenge');
 const { initStreakResetJob } = require('./src/jobs/streakReset');
 
 const PORT = process.env.PORT || 5000;
@@ -17,6 +17,7 @@ const start = async () => {
   if (process.env.NODE_ENV !== 'test') {
     initDailyChallengeJob();
     initStreakResetJob();
+    ensureTodayChallenge();
   }
 };
 

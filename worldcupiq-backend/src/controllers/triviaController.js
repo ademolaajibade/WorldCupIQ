@@ -252,6 +252,7 @@ const submitAnswer = async (req, res, next) => {
 
     res.json({
       success: true,
+      questionId,
       correct: isCorrect,
       correctAnswer: correctAnswerText,
       explanation: question.explanation,
