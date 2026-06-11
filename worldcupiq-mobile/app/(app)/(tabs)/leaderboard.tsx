@@ -25,29 +25,29 @@ const TABS: { key: LeaderboardScope; label: string }[] = [
 const MEDAL: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
 
 function EntryRow({ item, myId }: { item: LeaderboardEntry; myId?: string }) {
-  const isMe = item.user._id === myId;
+  const isMe = item.userId === myId;
   return (
     <View style={[styles.row, isMe && styles.rowMe]}>
       <Text style={styles.rank}>
         {MEDAL[item.rank] ?? `#${item.rank}`}
       </Text>
       <View style={styles.avatar}>
-        {item.user.avatar ? (
-          <Image source={{ uri: item.user.avatar }} style={styles.avatarImg} />
+        {item.avatarUrl ? (
+          <Image source={{ uri: item.avatarUrl }} style={styles.avatarImg} />
         ) : (
           <Ionicons name="person" size={18} color={COLORS.textMuted} />
         )}
       </View>
       <View style={styles.rowInfo}>
         <Text style={[styles.rowName, isMe && styles.rowNameMe]}>
-          {item.user.name}{isMe ? ' (you)' : ''}
+          {item.displayName}{isMe ? ' (you)' : ''}
         </Text>
-        {item.user.country && (
-          <Text style={styles.rowCountry}>{item.user.country}</Text>
+        {item.country && (
+          <Text style={styles.rowCountry}>{item.country}</Text>
         )}
       </View>
       <View style={styles.rowRight}>
-        <Text style={styles.points}>{item.points.toLocaleString()}</Text>
+        <Text style={styles.points}>{(item.totalScore ?? 0).toLocaleString()}</Text>
         <Text style={styles.pointsLabel}>pts</Text>
       </View>
     </View>
@@ -102,7 +102,7 @@ export default function LeaderboardScreen() {
       ) : (
         <FlatList
           data={entries}
-          keyExtractor={(item) => item.user._id}
+          keyExtractor={(item) => item.userId}
           renderItem={({ item }) => <EntryRow item={item} myId={user?._id} />}
           contentContainerStyle={styles.list}
           refreshing={isRefetching}

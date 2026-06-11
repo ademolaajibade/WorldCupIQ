@@ -62,8 +62,8 @@ function LeaderboardRow({ entry, isMe }: { entry: LeaderboardEntry; isMe: boolea
         <span className="text-sm text-muted-foreground">{entry.country}</span>
       )}
       <div className="text-right">
-        <p className="text-sm font-bold">{(entry.totalScore ?? 0).toLocaleString()}</p>
-        <p className="text-xs text-muted-foreground">{entry.accuracy ?? 0}% acc.</p>
+        <p className="text-base font-extrabold text-primary">{(entry.totalScore ?? 0).toLocaleString()}</p>
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">pts · {entry.accuracy ?? 0}% acc</p>
       </div>
     </div>
   );
@@ -105,10 +105,16 @@ export default function LeaderboardPage() {
   const { user } = useAuthStore();
   const isPremium = user?.subscription?.plan !== 'free';
 
-  const { data: globalData, isLoading: globalLoading } = useQuery({
+  const { data: rawGlobalData, isLoading: globalLoading } = useQuery({
     queryKey: ['leaderboard-global'],
     queryFn: () => api.get('/leaderboard/global').then((r) => r.data?.entries ?? r.data),
   });
+
+  const globalData = rawGlobalData
+    ? [...rawGlobalData]
+        .sort((a, b) => (b.totalScore ?? 0) - (a.totalScore ?? 0))
+        .map((entry, i) => ({ ...entry, rank: i + 1 }))
+    : undefined;
 
   const { data: countryData, isLoading: countryLoading } = useQuery({
     queryKey: ['leaderboard-country', user?.country],

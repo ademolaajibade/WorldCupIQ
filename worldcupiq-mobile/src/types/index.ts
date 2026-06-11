@@ -109,14 +109,13 @@ export interface GameResults {
 
 export interface LeaderboardEntry {
   rank: number;
-  user: {
-    _id: string;
-    name: string;
-    avatar?: string;
-    country?: string;
-  };
-  points: number;
-  streak: number;
+  userId: string;
+  displayName: string;
+  username?: string;
+  avatarUrl?: string;
+  country?: string;
+  totalScore: number;
+  accuracy: number;
 }
 
 export interface PricingPlan {

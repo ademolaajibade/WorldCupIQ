@@ -5,11 +5,16 @@ export type LeaderboardScope = 'global' | 'country' | 'friends';
 
 export const leaderboardApi = {
   get: (scope: LeaderboardScope, page = 1, countryCode?: string) => {
-    const params = { page, limit: 20 };
+    const params = { page, limit: 100 };
     if (scope === 'global') {
       return apiClient
         .get<{ entries: LeaderboardEntry[]; myRank?: number }>('/leaderboard/global', { params })
-        .then((r) => r.data);
+        .then((r) => {
+          const entries = (r.data?.entries ?? [])
+            .sort((a, b) => (b.totalScore ?? 0) - (a.totalScore ?? 0))
+            .map((e, i) => ({ ...e, rank: i + 1 }));
+          return { ...r.data, entries };
+        });
     }
     if (scope === 'country') {
       const code = countryCode ?? 'US';

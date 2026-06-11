@@ -17,9 +17,29 @@ const getUserRank = async (userId) => {
   return rank !== null ? rank + 1 : null; // 1-indexed
 };
 
-// Returns enriched leaderboard entries for a page
-const getGlobalLeaderboard = async (offset = 0, limit = 50) => {
-  return _fetchAndEnrich(GLOBAL_KEY, offset, limit);
+// Returns top-100 players by querying all users from MongoDB, sorted by totalScore desc
+const getGlobalLeaderboard = async (offset = 0, limit = 100) => {
+  const users = await User.find({})
+    .select('displayName username avatarUrl country stats.totalScore stats.correctAnswers stats.questionsAnswered')
+    .sort({ 'stats.totalScore': -1 })
+    .limit(100)
+    .lean();
+
+  return users.map((u, i) => {
+    const answered = u.stats?.questionsAnswered || 0;
+    const correct = u.stats?.correctAnswers || 0;
+    const accuracy = answered > 0 ? Math.round((correct / answered) * 100) : 0;
+    return {
+      rank: i + 1,
+      userId: u._id.toString(),
+      displayName: u.displayName || 'Unknown',
+      username: u.username || null,
+      avatarUrl: u.avatarUrl || null,
+      country: u.country || null,
+      totalScore: u.stats?.totalScore ?? 0,
+      accuracy,
+    };
+  });
 };
 
 const getCountryLeaderboard = async (countryCode, offset = 0, limit = 50) => {
