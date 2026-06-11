@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Sword, CheckCircle, Lock, Zap, Loader2, Trophy } from 'lucide-react';
+import { Sword, CheckCircle, Zap, Loader2, Trophy } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
